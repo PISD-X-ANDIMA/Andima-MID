@@ -2,23 +2,12 @@ import Button from "../components/ui/Button";
 import StatusIndicator from "../components/ui/StatusIndicator";
 import Table from "../components/ui/Table";
 import FormField from "../components/ui/FormField";
+import Pagination from "../components/ui/Pagination";
 
 export default function Home() {
-  const tableHeaders = [
-    "Job Number",
-    "Planned Cost",
-    "Actual Spending",
-  ];
+  const tableHeaders = ["Kolom 1", "Kolom 2", "Kolom 3"];
 
-  const tableRows = [
-    ["JOB-001", "Rp 10.000.000", "Rp 9.000.000"],
-    ["JOB-002", "Rp 15.000.000", "Rp 17.000.000"],
-    ["JOB-003", "Rp 20.000.000", "Rp 20.000.000"],
-    ["JOB-004", "Rp 12.000.000", "Rp 11.500.000"],
-    ["JOB-005", "Rp 25.000.000", "Rp 27.000.000"],
-    ["JOB-006", "Rp 18.000.000", "Rp 16.800.000"],
-    ["JOB-007", "Rp 30.000.000", "Rp 30.000.000"],
-  ];
+  const tableRows = [["Sel 1", "Sel 2", "Sel 3"]];
 
   return (
     <main
@@ -67,6 +56,7 @@ export default function Home() {
         <StatusIndicator status="ok" />
         <StatusIndicator status="warning" />
         <StatusIndicator status="error" />
+        <StatusIndicator status="info" />
       </div>
 
       {/* TABLE */}
@@ -75,8 +65,14 @@ export default function Home() {
         rows={tableRows}
       />
 
+      <div style={{ marginTop: "16px" }}><Pagination totalPages={8} /></div>
+
       {/* FORM FIELD */}
-      <FormField />
+      <div style={{ marginTop: "24px", maxWidth: "400px", display: "grid", gap: "16px" }}>
+        <FormField label="Label input" placeholder="Masukkan teks" />
+        <FormField as="select" label="Label dropdown" options={[{ value: "opsi-1", label: "Opsi 1" }, { value: "opsi-2", label: "Opsi 2" }]} />
+        <FormField label="Contoh error" error="Pesan error" />
+      </div>
     </main>
   );
 }
