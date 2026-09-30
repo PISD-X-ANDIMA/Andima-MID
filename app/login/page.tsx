@@ -93,6 +93,8 @@ import React, {
   ChangeEvent,
 } from "react";
 
+import { recordLogin } from "@/query/tracklog";
+
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/utils/supabase/client";
@@ -240,6 +242,7 @@ export default function LoginPage() {
         return;
       }
 
+      await recordLogin();
       setLoginAttempts(0);
 
       setSuccessMessage(
