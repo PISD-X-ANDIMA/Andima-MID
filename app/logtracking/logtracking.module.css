@@ -1,131 +1,98 @@
-.page {
-  min-height: 100%;
-  padding: 56px 32px;
-  background: #f8f9fc;
-  color: #1e293b;
-}
-
-.content {
-  width: min(1120px, 100%);
-  margin: 0 auto;
-}
-
-.header {
+.shell {
+  --sidebar-width: 354px;
+  min-height: 100vh;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
+  background: #f8f9fc;
+  color: #101b2c;
 }
 
-.eyebrow {
-  margin-bottom: 9px;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+.sidebar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 var(--sidebar-width);
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 23px 19px 34px;
+  border-radius: 0 0 8px 0;
+  background: #07111f;
+  color: #f8fafc;
+  transition: flex-basis 180ms ease;
 }
 
-.header h1 {
-  color: #172033;
-  font-size: clamp(27px, 4vw, 35px);
-  font-weight: 700;
-  letter-spacing: -0.04em;
+.profile { display: flex; align-items: center; gap: 14px; min-height: 78px; padding-left: 39px; }
+.avatar { width: 80px; height: 76px; flex: 0 0 80px; border-radius: 50%; background: #8052e8; }
+.profileText { display: flex; flex-direction: column; gap: 8px; color: #aeb8ca; font-size: 13px; }
+.profileText strong { margin-bottom: 1px; color: #fff; font-family: var(--font-syne), sans-serif; font-size: 20px; letter-spacing: .02em; }
+.divider { height: 2px; margin: 72px 41px 75px -5px; background: #d1d7e1; }
+.collapseButton { position: absolute; top: 140px; right: 0; display: grid; width: 56px; height: 66px; place-items: center; border: 0; border-radius: 24px 0 0 24px; background: #8052e8; color: white; cursor: pointer; }
+.collapseButton svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+.navigation { display: flex; flex-direction: column; gap: 41px; }
+.navItem { display: flex; min-height: 65px; align-items: center; gap: 22px; padding: 0 52px; border-radius: 19px; color: #f8fafc; font-size: 20px; font-weight: 700; white-space: nowrap; }
+.navItem svg { width: 28px; height: 28px; flex: none; fill: currentColor; }
+.active { background: #8052e8; }
+.active svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 2.1; }
+.logout { display: flex; align-items: center; justify-content: center; gap: 10px; margin: auto auto 12px; border: 0; background: transparent; color: #e2e8f0; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+.logout svg { width: 25px; height: 25px; fill: none; stroke: #e11d48; stroke-linecap: square; stroke-linejoin: miter; stroke-width: 2; }
+.mainArea { min-width: 0; flex: 1; }
+.topbar { display: flex; height: 130px; align-items: center; padding: 0 20px; background: #0d1a29; color: #fff; }
+.brand { margin-bottom: 8px; font-family: var(--font-syne), sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .05em; }
+.topbar h1 { font-family: var(--font-montserrat), sans-serif; font-size: 16px; font-weight: 600; }
+.page { min-height: calc(100vh - 130px); padding: 36px 48px 56px 25px; background: #f8f9fc; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
+.searchBox, .dateBox { display: flex; height: 42px; align-items: center; border: 1px solid #d7dfff; border-radius: 8px; background: #f2f5ff; color: #53688d; }
+.searchBox { width: auto; flex: 1; gap: 10px; padding: 0 12px; }
+.searchBox svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
+.searchBox input { width: 100%; border: 0; outline: 0; background: transparent; color: #253858; font: inherit; font-size: 12px; }
+.searchBox input::placeholder { color: #8b9bb8; }
+.dateBox { position: relative; width: 220px; flex: 0 0 220px; justify-content: space-between; padding: 0 13px; color: #506589; }
+.datePlaceholder { color: #8999b6; font-size: 12px; pointer-events: none; }
+.dateBox input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.dateBox input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+.dateBox:has(input:focus-visible) { outline: 2px solid #8052e8; outline-offset: 2px; }
+.dateBox svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; pointer-events: none; }
+.tableFrame { overflow-x: auto; background: transparent; }
+.table { width: 100%; min-width: 680px; table-layout: fixed; border-collapse: collapse; text-align: left; white-space: nowrap; }
+.table th { height: 42px; padding: 0 24px; border-bottom: 1px solid #e8ebf1; color: #526583; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; text-align: center; vertical-align: middle; }
+.table td { height: 68px; padding: 0 24px; border-bottom: 1px solid #e9ecf1; color: #101b2c; font-size: 12px; text-align: center; vertical-align: middle; }
+.table th:nth-child(1), .table td:nth-child(1) { width: 25%; }
+.table th:nth-child(2), .table td:nth-child(2), .table th:nth-child(3), .table td:nth-child(3), .table th:nth-child(4), .table td:nth-child(4) { width: 19%; }
+.table th:nth-child(5), .table td:nth-child(5) { width: 18%; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table .email { overflow: hidden; text-overflow: ellipsis; }
+.table .empty { height: 120px; color: #64748b; text-align: center; }
+.message { padding: 18px 20px; border: 1px solid #fecaca; border-radius: 9px; background: #fff7f7; color: #991b1b; font-size: 14px; }
+.collapsed { --sidebar-width: 104px; }
+.collapsed .profile { justify-content: center; padding-left: 0; }
+.collapsed .avatar { width: 58px; height: 58px; flex-basis: 58px; }
+.collapsed .profileText, .collapsed .navItem span { display: none; }
+.collapsed .divider { margin-right: 12px; margin-left: 12px; }
+.collapsed .navItem { justify-content: center; padding: 0; }
+.collapsed .collapseButton { border-radius: 22px 0 0 22px; }
+
+@media (max-width: 800px) {
+  .shell { --sidebar-width: 190px; }
+  .sidebar { padding-right: 10px; padding-left: 10px; }
+  .profile { justify-content: flex-start; padding-left: 5px; }
+  .avatar { width: 52px; height: 52px; flex-basis: 52px; }
+  .profileText { gap: 5px; font-size: 11px; }
+  .profileText strong { font-size: 15px; }
+  .divider { margin: 72px 12px 50px; }
+  .navigation { gap: 24px; }
+  .navItem { min-height: 54px; gap: 12px; padding: 0 8px; border-radius: 13px; font-size: 13px; }
+  .navItem svg, .active svg { width: 22px; height: 22px; }
+  .page { padding-right: 18px; padding-left: 18px; }
 }
 
-.description {
-  margin-top: 8px;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.count {
-  flex: none;
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  background: #fff;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.tableFrame {
-  overflow-x: auto;
-  border: 1px solid #e8ebf1;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 4px 18px rgb(15 23 42 / 3%);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.table th {
-  height: 54px;
-  padding: 0 22px;
-  border-bottom: 1px solid #e8ebf1;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-}
-
-.table td {
-  height: 60px;
-  padding: 0 22px;
-  border-bottom: 1px solid #edf0f4;
-  color: #273449;
-  font-size: 13px;
-}
-
-.table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.table tbody tr:hover {
-  background: #fafbfe;
-}
-
-.table .email {
-  text-align: left;
-}
-
-.table .empty {
-  height: 120px;
-  color: #64748b;
-  text-align: center;
-}
-
-.message {
-  padding: 18px 20px;
-  border: 1px solid #fecaca;
-  border-radius: 9px;
-  background: #fff7f7;
-  color: #991b1b;
-  font-size: 14px;
-}
-
-.note {
-  margin-top: 14px;
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-@media (max-width: 640px) {
-  .page {
-    padding: 36px 16px;
-  }
-
-  .header {
-    align-items: flex-start;
-  }
-
-  .table {
-    min-width: 680px;
-  }
+@media (max-width: 520px) {
+  .shell { --sidebar-width: 182px; }
+  .sidebar { padding-right: 8px; padding-left: 8px; }
+  .profile { gap: 9px; padding-left: 2px; }
+  .avatar { width: 46px; height: 46px; flex-basis: 46px; }
+  .collapseButton { width: 42px; height: 54px; }
+  .navItem { gap: 10px; padding-right: 4px; padding-left: 6px; font-size: 12px; }
+  .topbar { height: 104px; }
+  .page { min-height: calc(100vh - 104px); padding: 28px 12px; }
+  .toolbar { gap: 10px; margin-bottom: 24px; }
+  .dateBox { width: 150px; flex-basis: 150px; }
 }

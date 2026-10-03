@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { Montserrat, Syne } from "next/font/google";
 import "./globals.css";
+
+const syne = Syne({ subsets: ["latin"], variable: "--font-syne" });
+const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" });
 
 export const metadata: Metadata = {
   title: "Andima MID",
@@ -9,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body className={`${syne.variable} ${montserrat.variable}`}>{children}</body>
     </html>
   );
 }
