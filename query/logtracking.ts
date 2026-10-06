@@ -25,6 +25,7 @@ export async function getTrackingLogin() {
       date,
       timelogin,
       timelogout,
+      nama,
       email,
       role
     `)
