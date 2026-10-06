@@ -22,11 +22,22 @@ export async function recordLogin() {
     throw new Error("Data user access tidak ditemukan");
   }
 
+  const { data: employee, error: employeeError } = await supabase
+    .from("d3_employee")
+    .select("full_name")
+    .eq("id", access.employee_id)
+    .single();
+
+  if (employeeError || !employee) {
+    throw new Error("Data employee tidak ditemukan");
+  }
+
   const { data, error } = await supabase
     .from("tracking_login")
     .insert({
       auth_user_id: user.id,
       employee_id: access.employee_id,
+      nama: employee.full_name,
       email: user.email ?? "",
       role: access.app_role,
     })
