@@ -9,6 +9,7 @@ type LogEntry = {
   date: string | null;
   timelogin: string | null;
   timelogout: string | null;
+  nama: string | null;
   email: string | null;
   role: string | null;
 };
@@ -37,7 +38,8 @@ export default function LogTrackingDashboard({ logs, hasError }: { logs: LogEntr
   const visibleLogs = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase();
     return logs.filter((log) => {
-      const matchesSearch = !normalizedSearch || (log.email ?? "").toLocaleLowerCase().includes(normalizedSearch);
+      const matchesSearch = !normalizedSearch || [log.nama, log.email]
+        .some((value) => (value ?? "").toLocaleLowerCase().includes(normalizedSearch));
       const matchesDate = !date || log.date?.slice(0, 10) === date;
       return matchesSearch && matchesDate;
     });
@@ -79,7 +81,7 @@ export default function LogTrackingDashboard({ logs, hasError }: { logs: LogEntr
             <div className={styles.tableFrame}>
               <table className={styles.table}>
                 <thead><tr><th scope="col">EMPLOYEE’S NAME</th><th scope="col">E-MAIL</th><th scope="col">ROLE</th><th scope="col">LOGIN</th><th scope="col">LOGOUT</th><th scope="col">DATE</th></tr></thead>
-                <tbody>{visibleLogs.length === 0 ? <tr><td className={styles.empty} colSpan={6}>{logs.length === 0 ? "Belum ada catatan log." : "Tidak ada catatan yang cocok."}</td></tr> : visibleLogs.map((log) => <tr key={log.id}><td className={styles.employeeName} aria-label="Nama karyawan belum tersedia"></td><td className={styles.email}>{log.email || "—"}</td><td>{log.role || "—"}</td><td>{displayTime(log.timelogin)}</td><td>{displayTime(log.timelogout)}</td><td>{displayDate(log.date)}</td></tr>)}</tbody>
+                <tbody>{visibleLogs.length === 0 ? <tr><td className={styles.empty} colSpan={6}>{logs.length === 0 ? "Belum ada catatan log." : "Tidak ada catatan yang cocok."}</td></tr> : visibleLogs.map((log) => <tr key={log.id}><td className={styles.employeeName}>{log.nama || "—"}</td><td className={styles.email}>{log.email || "—"}</td><td>{log.role || "—"}</td><td>{displayTime(log.timelogin)}</td><td>{displayTime(log.timelogout)}</td><td>{displayDate(log.date)}</td></tr>)}</tbody>
               </table>
             </div>
           )}
