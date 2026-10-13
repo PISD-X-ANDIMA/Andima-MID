@@ -166,9 +166,6 @@ export default function DashboardShell({ activePage, headerActions, children }: 
           </div>
           <div className="ml-auto flex items-center gap-3 sm:gap-4">
             {headerActions}
-            <div role="img" aria-label="Notifikasi" className="relative flex h-7 w-11 items-center justify-center border-x border-[#E1E8F5]">
-              <Bell className="h-3.5 w-3.5 text-[#8292A8]" aria-hidden="true" />
-            </div>
             <div className="flex items-center gap-2" aria-label={`Profil: ${profile.name}, ${profile.position}`} aria-live="polite">
               <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#A4CFB9] bg-[#D0E9DC] text-[11px] font-medium text-[#16815B]">{initials}</span>
               <div className="leading-tight">

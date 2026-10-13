@@ -28,22 +28,20 @@ export default function RegisterPage() {
   const [greeting, setGreeting] = useState<string>('Good Morning');
 
   useEffect(() => {
-      const hour = new Date().getHours();
-      if (hour >= 3 && hour < 12) setGreeting('Good Morning');
-      else if (hour >= 12 && hour < 17) setGreeting('Good Afternoon');
-      else setGreeting('Good Evening');
-    }, []);
+    const hour = new Date().getHours();
+    if (hour >= 3 && hour < 12) setGreeting('Good Morning');
+    else if (hour >= 12 && hour < 17) setGreeting('Good Afternoon');
+    else setGreeting('Good Evening');
+  }, []);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const submitting = useRef(false);
 
-  // States Error UI
+  // Error UI States
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  // 1. Pemetaan Prefiks ID berdasarkan ID Departemen
   const DEPARTMENT_PREFIX_MAP: Record<string, string> = {
     '72cd470d-216c-48b6-abd9-0cd05a4d8974': 'HCC-HR-MGR', // HRMS
     'd38c1ed7-abd4-4a57-ab9d-0ba1d396fbfc': 'FAT-BIL',     // CCR / Logistics Ops
@@ -60,19 +58,16 @@ export default function RegisterPage() {
     '58706b7f-950b-4e71-b066-792fbd91424d': '97ac5d35-5da2-4f5d-9d36-78500f403cc7', // Sales Executive -> Commercial
   };
   
-  // 2. Daftar Kode Resmi Direktur (Fixed)
   const DIRECTOR_CODES = [
     'DIR-FAT-001',
     'DIR-COM-001',
     'DIR-HCC-001',
   ] as const;
 
-  // 3. Fungsi Generate ID Tunggal Tanpa Redundansi
   const generateNextEmployeeId = async (
     selectedDepartmentId: string,
     selectedPositionId: string
   ): Promise<string> => {
-    // A. Jika Posisinya Direktur (0ec333af-8737-413f-adab-841a3067e485)
     const IS_DIRECTOR = selectedPositionId === '0ec333af-8737-413f-adab-841a3067e485';
 
     if (IS_DIRECTOR) {
@@ -83,7 +78,7 @@ export default function RegisterPage() {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (dirError) throw new Error('Gagal memeriksa ID Direktur: ' + dirError.message);
+      if (dirError) throw new Error('Failed to verify Director ID: ' + dirError.message);
       if (!dirData?.length) return DIRECTOR_CODES[0];
 
       const lastDirId = dirData[0].employee_id ?? '';
@@ -93,14 +88,11 @@ export default function RegisterPage() {
         return DIRECTOR_CODES[currentIndex + 1];
       }
       
-      // Jika kuota kode fixed direktur habis, gunakan fallback AND-
       return 'AND-0001';
     }
 
-    // B. Jika Karyawan Biasa: Ambil Prefiks Berdasarkan Departemen
     const prefix = DEPARTMENT_PREFIX_MAP[selectedDepartmentId] || 'AND';
 
-    // Cari ID terakhir di DB yang berawalan prefiks departemen tersebut (misal: 'IT-DEV-%')
     const { data, error } = await supabase
       .from('b2_register')
       .select('employee_id')
@@ -108,12 +100,9 @@ export default function RegisterPage() {
       .order('created_at', { ascending: false })
       .limit(1);
 
-    if (error) throw new Error('Gagal menyiapkan ID registrasi: ' + error.message);
-
-    // Jika belum ada karyawan di departemen tersebut, mulai dari 001
+    if (error) throw new Error('Failed to prepare registration ID: ' + error.message);
     if (!data?.length) return `${prefix}-001`;
 
-    // Ambil nomor urut terakhir
     const lastId = data[0].employee_id ?? '';
     const regex = new RegExp(`^${prefix}-(\\d+)$`);
     const match = regex.exec(lastId);
@@ -124,181 +113,171 @@ export default function RegisterPage() {
     return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
   };
 
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (submitting.current || successMessage) return;
+    if (submitting.current || successMessage) return;
 
-      setFieldErrors({});
-      setGeneralError('');
-      setSuccessMessage('');
+    setFieldErrors({});
+    setGeneralError('');
+    setSuccessMessage('');
 
-      const errors: FieldErrors = {};
+    const errors: FieldErrors = {};
 
-      // Validasi Full Name
-      const nameRegex = /^[a-zA-Z\s]+$/;
-      if (!fullName.trim()) {
-        errors.fullName = 'Full name is required.';
-      } else if (!nameRegex.test(fullName.trim())) {
-        errors.fullName = 'Full name must contain letters and spaces only.';
-      }
+    // Validate Full Name
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!fullName.trim()) {
+      errors.fullName = 'Full name is required.';
+    } else if (!nameRegex.test(fullName.trim())) {
+      errors.fullName = 'Full name must contain letters and spaces only.';
+    }
 
-      // Validasi Email
-      const emailLower = email.trim().toLowerCase();
-      if (!email.trim()) {
-        errors.email = 'Email address is required.';
-      } else if (!/^[^\s@]+@andima\.co\.id$/.test(emailLower)) {
-        errors.email = 'Email address must use the domain @andima.co.id';
-      }
+    // Validate Email & Password Interdependence
+    const isEmailEmpty = !email.trim();
+    const isPasswordEmpty = !password;
 
-      // Validasi Password
+    if (isEmailEmpty) {
+      errors.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@andima\.co\.id$/.test(email.trim().toLowerCase())) {
+      errors.email = 'Email address must use the domain @andima.co.id';
+    }
+
+    if (isPasswordEmpty) {
+      errors.password = 'Password is required.';
+    } else {
       const hasLetter = /[a-zA-Z]/.test(password);
       const hasNumber = /[0-9]/.test(password);
-      const hasSpecialChar =
-        /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+      const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
 
-      if (!password) {
-        errors.password = 'Password is required.';
-      } else if (password.length < 10) {
+      if (password.length < 10) {
         errors.password = 'Password must be at least 10 characters long.';
       } else if (!hasLetter || !hasNumber || !hasSpecialChar) {
-        errors.password =
-          'Password must include letters, numbers, and special characters.';
+        errors.password = 'Password must include letters, numbers, and special characters.';
       }
+    }
 
-      // Validasi Phone
-      const phoneDigitsOnly = /^\d+$/;
-      if (!phone.trim()) {
-        errors.phone = 'Phone number is required.';
-      } else if (!phoneDigitsOnly.test(phone.trim())) {
-        errors.phone = 'Phone number must contain numbers only.';
-      } else if (phone.trim().length > 12) {
-        errors.phone = 'Phone number cannot exceed 12 digits.';
+    // Validate Phone Number
+    const phoneDigitsOnly = /^\d+$/;
+    if (!phone.trim()) {
+      errors.phone = 'Phone number is required.';
+    } else if (!phoneDigitsOnly.test(phone.trim())) {
+      errors.phone = 'Phone number must contain numbers only.';
+    } else if (phone.trim().length > 12) {
+      errors.phone = 'Phone number cannot exceed 12 digits.';
+    }
+
+    // Validate Employment Status
+    if (!employmentStatus) {
+      errors.employmentStatus = 'Please select employment status.';
+    }
+
+    // Validate Position
+    if (!positionId) {
+      errors.positionId = 'Please select a position.';
+    }
+
+    // Validate Department
+    if (!departementId) {
+      errors.departementId = 'Please select a department.';
+    }
+
+    // Validate Position & Department Match
+    const DIRECTOR_POSITION_ID = '0ec333af-8737-413f-adab-841a3067e485';
+    if (positionId && departementId && positionId !== DIRECTOR_POSITION_ID) {
+      const expectedDepartmentId = VALID_POSITION_DEPARTMENTS[positionId];
+      if (expectedDepartmentId && expectedDepartmentId !== departementId) {
+        errors.positionId = 'Selected position does not match the department.';
+        errors.departementId = 'Selected department does not match the position.';
       }
+    }
 
-      // Validasi Employment Status
-      if (!employmentStatus) {
-        errors.employmentStatus = 'Please select employment status.';
-      }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setGeneralError('Action required before submitting.');
+      return;
+    }
 
-      // Validasi Position
-      if (!positionId) {
-        errors.positionId = 'Please select a position.';
-      }
+    submitting.current = true;
+    setIsLoading(true);
 
-      // Validasi Department
-      if (!departementId) {
-        errors.departementId = 'Please select a department.';
-      }
+    try {
+      const autoEmployeeId = await generateNextEmployeeId(departementId, positionId);
 
-      // --- VALIDASI RELEVANSI POSISI & DEPARTEMEN ---
-      const DIRECTOR_POSITION_ID = '0ec333af-8737-413f-adab-841a3067e485';
-
-      if (positionId && departementId && positionId !== DIRECTOR_POSITION_ID) {
-        const expectedDepartmentId = VALID_POSITION_DEPARTMENTS[positionId];
-        if (expectedDepartmentId && expectedDepartmentId !== departementId) {
-          errors.positionId = 'Selected position does not match the department.';
-          errors.departementId = 'Selected department does not match the position.';
-        }
-      }
-
-      // Kalau validasi gagal
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        setGeneralError('Please fix the errors below before submitting.');
-        return;
-      }
-
-      submitting.current = true;
-      setIsLoading(true);
-
-      try {
-        // 1. Generate Employee ID
-        const autoEmployeeId = await generateNextEmployeeId(departementId, positionId);
-
-        // 2. Buat akun Supabase Auth (diubah: tangkap data untuk mengambil UUID)
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: emailLower,
-          password: password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              position_id: positionId,
-            },
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password: password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            position_id: positionId,
           },
-        });
+        },
+      });
 
-        if (authError) {
-          throw new Error('Registration failed: ' + authError.message);
-        }
-
-        // Ambil ID user dari auth
-        const userId = authData?.user?.id;
-        if (!userId) {
-          throw new Error('User ID tidak ditemukan setelah pendaftaran auth.');
-        }
-
-        // 3. Simpan data ke b2_register (diubah: tambahkan id: userId bertipe UUID)
-        const { error: dbError } = await supabase
-          .from('b2_register')
-          .insert([
-            {
-              id: userId,
-              employee_id: autoEmployeeId,
-              full_name: fullName.trim(),
-              email: emailLower,
-              password: password,
-              phone: phone.trim(),
-              employment_status: employmentStatus,
-              position_id: positionId,
-              departement_id: departementId,
-            },
-          ]);
-
-        if (dbError) {
-          throw new Error('Gagal menyimpan ke b2_register: ' + dbError.message);
-        }
-
-        // 4. Berhasil
-        setSuccessMessage(
-          `Registration successful! Your ID is ${autoEmployeeId}. Redirecting to login page...`
-        );
-
-        setTimeout(() => {
-          router.replace('/login');
-        }, 1500);
-
-      } catch (err: unknown) {
-        setGeneralError(
-          err instanceof Error
-            ? err.message
-            : 'Terjadi kesalahan saat menyimpan. Silakan coba lagi.'
-        );
-      } finally {
-        submitting.current = false;
-        setIsLoading(false);
+      if (authError) {
+        throw new Error('Registration failed: ' + authError.message);
       }
-    };
+
+      const userId = authData?.user?.id;
+      if (!userId) {
+        throw new Error('User ID not found after account creation.');
+      }
+
+      const { error: dbError } = await supabase
+        .from('b2_register')
+        .insert([
+          {
+            id: userId,
+            employee_id: autoEmployeeId,
+            full_name: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            password: password,
+            phone: phone.trim(),
+            employment_status: employmentStatus,
+            position_id: positionId,
+            departement_id: departementId,
+          },
+        ]);
+
+      if (dbError) {
+        throw new Error('Failed to save to database register: ' + dbError.message);
+      }
+
+      setSuccessMessage(
+        `Registration successful! Your Employee ID is ${autoEmployeeId}. Redirecting to login page...`
+      );
+
+      setTimeout(() => {
+        router.replace('/login');
+      }, 1500);
+
+    } catch (err: unknown) {
+      setGeneralError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while saving data. Please try again.'
+      );
+    } finally {
+      submitting.current = false;
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <main className="relative h-dvh w-full overflow-x-hidden overflow-y-auto bg-[#07111F] text-[#172033] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {/* CONTAINER FORM REGISTRASI */}
+    <main className="relative h-dvh w-full overflow-x-hidden overflow-y-auto bg-[#07111F] text-[#172033] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden font-[family-name:var(--font-montserrat)]">
       <div className="w-full min-h-full lg:w-1/2 min-w-0 flex flex-col justify-center p-4 sm:p-8 lg:p-10 relative z-10">
         <div className="w-full max-w-2xl shrink-0 mx-auto p-6 sm:p-9 rounded-3xl bg-gradient-to-b from-white/85 via-white/70 to-white/60 backdrop-blur-2xl border border-white/80 shadow-[0_20px_50px_rgba(7,17,31,0.5),inset_0_2px_4px_rgba(255,255,255,0.9)] relative overflow-hidden">
         
-        {/* 3. FORM LOGIN CONTAINER */}
-          {/* Greeting */}
             <div className="mb-7 text-left relative z-10">
               <h2 className="font-[family-name:var(--font-syne)] text-xl sm:text-2xl font-bold text-[#0D1B2A] tracking-tight">
                 {greeting},
               </h2>
               <p className="font-[family-name:var(--font-montserrat)] text-sm text-[#334155] mt-1.5 font-medium">
-                Please register with your identity.
+                Please register by completing your personal information.
               </p>
             </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} noValidate className="space-y-3.5 sm:space-y-4 w-full relative z-10">
-            
             {/* Full Name */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#172033] mb-1">
@@ -326,7 +305,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
-                placeholder="username@andima.co.id"
+                placeholder="name@andima.co.id"
                 value={email}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => {
                   setEmail(e.target.value);
@@ -424,12 +403,11 @@ export default function RegisterPage() {
               {fieldErrors.employmentStatus && <p className="text-red-600 text-xs font-semibold mt-1 ml-1">{fieldErrors.employmentStatus}</p>}
             </div>
 
-            {/* Grid Position & Department */}
+            {/* Position & Department */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Position */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#172033] mb-1">
-                  Position
+                  Position / Job Title
                 </label>
                 <select
                   value={positionId}
@@ -442,18 +420,16 @@ export default function RegisterPage() {
                   }`}
                 >
                   <option value="">Select Position</option>
-                  {/* GANTI DENGAN UUID ASLI DARI TABEL POSISI KAMU */}
                   <option value="40a8e1f1-0713-4e5d-a7af-061b6e5f495c">Freight Forwarding Specialist</option>
                   <option value="96c66ea1-44b6-474f-9410-ad992dd14b93">HR Administrator</option>
                   <option value="265c9357-105c-437c-a244-6897122f17c1">Information Technology</option>
                   <option value="0ec333af-8737-413f-adab-841a3067e485">Director</option>
                   <option value="10da1bac-a6a8-472e-a171-e4984ab768d9">Accounting Associate</option>
-                  <option value="58706b7f-950b-4e71-b066-792fbd91424d">Sales Executive </option>
+                  <option value="58706b7f-950b-4e71-b066-792fbd91424d">Sales Executive</option>
                 </select>
                 {fieldErrors.positionId && <p className="text-red-600 text-xs font-semibold mt-1 ml-1">{fieldErrors.positionId}</p>}
               </div>
 
-              {/* Department */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#172033] mb-1">
                   Department
@@ -469,7 +445,6 @@ export default function RegisterPage() {
                   }`}
                 >
                   <option value="">Select Department</option>
-                  {/* GANTI DENGAN UUID ASLI DARI TABEL DEPARTEMEN KAMU */}
                   <option value="72cd470d-216c-48b6-abd9-0cd05a4d8974">Human Resources</option>
                   <option value="d38c1ed7-abd4-4a57-ab9d-0ba1d396fbfc">Logistics & Shipment Operations</option>
                   <option value="8113ab6f-d5cc-4c94-bbf6-e08047931fab">Information Technology</option>
@@ -503,7 +478,7 @@ export default function RegisterPage() {
                   : 'bg-[#3B6FF5] hover:bg-[#2B5CE5] active:scale-[0.99] cursor-pointer'
               }`}
             >
-              {successMessage ? 'Tersimpan' : isLoading ? 'Processing...' : 'Register'}
+              {successMessage ? 'Saved' : isLoading ? 'Processing...' : 'Register'}
             </button>
           </form>
 
@@ -514,36 +489,30 @@ export default function RegisterPage() {
               href="/login"
               className="font-bold text-[#172033] hover:opacity-80 underline transition-opacity"
             >
-              Login
+              Log in
             </Link>
           </div>
         </div>
       </div>
 
-      {/* 2. BRAND TEXT (TITLE) MENGGUNAKAN FONT SYNE */}
-            <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-8 lg:right-16 xl:right-24 z-20 pointer-events-none flex-col items-end text-right max-w-lg">
-              
-              {/* Logo ANDIMA di Luar Frame */}
-              <div className="w-32 sm:w-40 lg:w-48 mb-4">
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-ANDIMA-wzx4gpZx20EFE5IYcH3jqabixELIo3.png"
-                  alt="Logo ANDIMA"
-                  width={400}
-                  height={246}
-                  className="w-full h-auto object-contain drop-shadow-lg"
-                />
-              </div>
-              {/* Frame Transparan #0F2342 */}
-              {/* Frame Transparan dengan Warna #0F2342 */}
-              <h1 className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
-                PT. ANDIMA<br />
-                <span className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
-                  TRANSPORTINDO
-                </span>
-              </h1>
-          </div>
+      <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-8 lg:right-16 xl:right-24 z-20 pointer-events-none flex-col items-end text-right max-w-lg">
+        <div className="w-32 sm:w-40 lg:w-48 mb-4">
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-ANDIMA-wzx4gpZx20EFE5IYcH3jqabixELIo3.png"
+            alt="Logo ANDIMA"
+            width={400}
+            height={246}
+            className="w-full h-auto object-contain drop-shadow-lg"
+          />
+        </div>
+        <h1 className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
+          PT. ANDIMA<br />
+          <span className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
+            TRANSPORTINDO
+          </span>
+        </h1>
+      </div>
 
-      {/* BACKGROUND IMAGE LOGISTICS */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <img
           src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=1600&auto=format&fit=crop"
@@ -554,6 +523,5 @@ export default function RegisterPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#07111F] via-transparent to-transparent pointer-events-none" />
       </div>
     </main>
-
   );
 }

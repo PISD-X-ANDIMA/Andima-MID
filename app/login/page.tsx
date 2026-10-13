@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-
 /* =========================
-   PEMETAAN ROUTE DEPARTEMEN
+   DEPARTMENT ROUTE MAPPING
 ========================= */
 const DEPARTMENT_ROUTE_MAP: Record<string, string> = {
   '72cd470d-216c-48b6-abd9-0cd05a4d8974': '/dashboard/hrms', // Human Resources
@@ -20,7 +19,7 @@ const DEPARTMENT_ROUTE_MAP: Record<string, string> = {
 const REGISTERED_USERS = {
   'manajemen@andima.co.id': {
     passwordRole: 'Manajemen123!@#',
-    role: 'Manajemen',
+    role: 'Management',
     redirectTo: '/dashboard/manajemen',
   },
 };
@@ -50,7 +49,7 @@ function LoginContent() {
   useEffect(() => {
     const reason = searchParams.get('reason');
     if (reason === 'day_changed') {
-      alert('Hari telah berganti. Sesi Anda telah berakhir, silakan login kembali.');
+      alert('The day has changed. Your session has expired, please log in again.');
     }
   }, [searchParams]);
 
@@ -79,6 +78,31 @@ function LoginContent() {
     return passVal.length >= 8 && hasLetter && hasDigit && hasSpecial;
   };
 
+  /* =========================================
+     MAPPING SUPABASE ERRORS TO ENGLISH
+  ========================================= */
+  const translateSupabaseError = (rawMessage: string): string => {
+    const msg = rawMessage.toLowerCase();
+
+    if (msg.includes('invalid login credentials')) {
+      return 'Incorrect email or password.';
+    }
+    if (msg.includes('email not confirmed')) {
+      return 'Your email address is not verified yet. Please confirm your email first.';
+    }
+    if (msg.includes('user not found')) {
+      return 'No account found with this email address.';
+    }
+    if (msg.includes('too many requests') || msg.includes('rate limit')) {
+      return 'Too many requests. Please try again in a few moments.';
+    }
+    if (msg.includes('invalid email')) {
+      return 'Invalid email address format.';
+    }
+
+    return 'Authentication failed. Please double-check your credentials.';
+  };
+
   const handleFailedAttempt = (customMessage: string) => {
     const newAttempts = loginAttempts + 1;
     setLoginAttempts(newAttempts);
@@ -86,7 +110,7 @@ function LoginContent() {
     if (newAttempts >= 5) {
       setIsLocked(true);
       setIsPermanentlyBlocked(true);
-      setErrorMessage('Your account has been blocked. Please contact the IT administrator.');
+      setErrorMessage('Your account has been blocked due to 5 consecutive failed login attempts. Please contact IT Administrator.');
     } else if (newAttempts === 4) {
       setErrorMessage(
         `${customMessage} Warning: 1 more failed attempt will block your account!`
@@ -98,7 +122,7 @@ function LoginContent() {
         'Too many failed login attempts (3/5). Please wait 30 seconds before trying again.'
       );
     } else {
-      setErrorMessage(`${customMessage} (Remaining attempts: ${5 - newAttempts})`);
+      setErrorMessage(`${customMessage} (${5 - newAttempts} attempt(s) remaining)`);
     }
   };
 
@@ -109,8 +133,22 @@ function LoginContent() {
 
     if (isLocked || isPermanentlyBlocked) return;
 
-    if (!email.trim() || !password.trim()) {
+    // Field completeness validation
+    const isEmailEmpty = !email.trim();
+    const isPasswordEmpty = !password.trim();
+
+    if (isEmailEmpty && isPasswordEmpty) {
       setErrorMessage('Email and Password are required.');
+      return;
+    }
+
+    if (isEmailEmpty) {
+      setErrorMessage('Email address is required.');
+      return;
+    }
+
+    if (isPasswordEmpty) {
+      setErrorMessage('Password is required.');
       return;
     }
 
@@ -121,12 +159,12 @@ function LoginContent() {
 
     if (!validatePasswordStrength(password)) {
       setErrorMessage(
-        'Password must be at least 10 characters long and contain a mix of letters, numbers, and special characters.'
+        'Password must be at least 10 characters long and include a mix of letters, numbers, and special characters.'
       );
       return;
     }
 
-    // A. Akun Hardcoded Demo (Manajemen)
+    // A. Hardcoded Demo Account (Management)
     const userAccount = REGISTERED_USERS[email.toLowerCase() as keyof typeof REGISTERED_USERS];
     if (userAccount && userAccount.passwordRole === password) {
       setLoginAttempts(0);
@@ -135,61 +173,54 @@ function LoginContent() {
       return;
     }
 
-    // B. Login Supabase Auth & Routing Berdasarkan UUID Departemen
+    // B. Supabase Auth Login & Department UUID Routing
     setIsSigningIn(true);
     try {
-      // 1. Autentikasi dengan Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
         password,
       });
 
       if (authError) {
-        const message = authError.message.toLowerCase().includes('email not confirmed')
-          ? 'Email belum dikonfirmasi. Selesaikan konfirmasi melalui email terlebih dahulu.'
-          : 'Email atau password salah.';
-        handleFailedAttempt(message);
+        const translatedMsg = translateSupabaseError(authError.message);
+        handleFailedAttempt(translatedMsg);
         return;
       }
 
-      // 2. Ambil Profil User dari b2_register
+      // Fetch User Profile from b2_register
       const { data: profileData, error: profileError } = await supabase
         .from('b2_register')
         .select('departement_id, full_name, is_active')
         .ilike('email', email.trim())
         .maybeSingle();
 
-      // Jika ada error dari Supabase (misal masalah RLS / query)
       if (profileError) {
-        console.error('Error Database Supabase:', profileError.message);
-        setErrorMessage('Gagal mengambil data profil dari server.');
+        console.error('Supabase Database Error:', profileError.message);
+        setErrorMessage('Failed to fetch profile data from server.');
         return;
       }
 
-      // Jika query sukses tapi datanya tidak ditemukan di tabel b2_register
       if (!profileData) {
-        setErrorMessage('Email Anda terautentikasi, namun data profil belum terdaftar di database.');
+        setErrorMessage('Your account is authenticated, but user profile data was not found.');
         return;
       }
 
-      // 3. Cek apakah akun dinonaktifkan oleh Admin
       if (profileData.is_active === false) {
-        setErrorMessage('Akun Anda telah dinonaktifkan. Silakan hubungi IT / HR Admin.');
+        setErrorMessage('Your account has been deactivated. Please contact IT / HR Admin.');
         return;
       }
 
-      // 4. Tentukan Route Dashboard Berdasarkan departement_id (UUID)
       const targetRoute = DEPARTMENT_ROUTE_MAP[profileData.departement_id] || '/dashboard';
 
       setLoginAttempts(0);
-      setSuccessMessage(`Login berhasil! Selamat datang, ${profileData.full_name || 'User'}. Mengalihkan...`);
+      setSuccessMessage(`Login successful! Welcome back, ${profileData.full_name || 'User'}. Redirecting...`);
 
       window.setTimeout(() => {
         router.push(targetRoute);
       }, 1200);
 
     } catch (err) {
-      setErrorMessage('Tidak dapat menghubungi server login. Silakan coba lagi.');
+      setErrorMessage('Unable to connect to the login server. Please check your internet connection.');
     } finally {
       setIsSigningIn(false);
     }
@@ -197,26 +228,22 @@ function LoginContent() {
 
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden bg-[#07111F] text-[#0D1B2A] selection:bg-[#3B6FF5] selection:text-white font-[family-name:var(--font-montserrat)]">
-      {/* 1. BACKGROUND GAMBAR LOGISTIK FULL SCREEN */}
+      {/* 1. FULLSCREEN LOGISTICS BACKGROUND */}
       <div className="absolute inset-0 z-0">
         <img
           src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=1600&auto=format&fit=crop"
           alt="Cargo Ship Logistics"
           className="w-full h-full object-cover object-right opacity-60"
         />
-        {/* Soft Blending Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#0D1B2A] via-[#0D1B2A]/85 via-40% to-transparent pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#07111F] via-transparent to-transparent pointer-events-none" />
       </div>
 
-      {/* Ambient Light Glows */}
       <div className="absolute -top-20 -left-20 w-96 h-96 bg-[#18C7C0]/30 rounded-full blur-3xl pointer-events-none z-0" />
       <div className="absolute -bottom-20 left-1/3 w-96 h-96 bg-[#3B6FF5]/30 rounded-full blur-3xl pointer-events-none z-0" />
 
-      {/* 2. BRAND TEXT (TITLE) MENGGUNAKAN FONT SYNE */}
+      {/* 2. BRAND TITLE */}
       <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-8 lg:right-16 xl:right-24 z-20 pointer-events-none flex-col items-end text-right max-w-lg">
-        
-        {/* Logo ANDIMA di Luar Frame */}
         <div className="w-32 sm:w-40 lg:w-48 mb-4">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-ANDIMA-wzx4gpZx20EFE5IYcH3jqabixELIo3.png"
@@ -226,23 +253,19 @@ function LoginContent() {
             className="w-full h-auto object-contain drop-shadow-lg"
           />
         </div>
-        {/* Frame Transparan dengan Warna #0F2342 */}
-          <h1 className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
-            PT. ANDIMA<br />
-            <span className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
-              TRANSPORTINDO
-            </span>
-          </h1>
+        <h1 className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
+          PT. ANDIMA<br />
+          <span className="font-[family-name:var(--font-syne)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wider text-white drop-shadow-md leading-tight">
+            TRANSPORTINDO
+          </span>
+        </h1>
       </div>
 
-      {/* 3. FORM LOGIN CONTAINER */}
+      {/* 3. LOGIN FORM CONTAINER */}
       <div className="relative z-10 min-h-screen w-full flex items-center justify-start px-6 py-8 sm:px-12 lg:px-20">
         <div className="w-full max-w-xl">
-
-          {/* FRAME LIQUID GLASS (GLASSMORPHISM ADVANCED) */}
           <div className="p-8 sm:p-11 rounded-3xl bg-gradient-to-b from-white/85 via-white/70 to-white/60 backdrop-blur-2xl border border-white/80 shadow-[0_20px_50px_rgba(7,17,31,0.5),inset_0_2px_4px_rgba(255,255,255,0.9)] relative overflow-hidden">
             
-            {/* Top Liquid Highlight Specular Glow */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-gradient-to-b from-white/80 to-transparent blur-md pointer-events-none rounded-full" />
 
             {/* Greeting */}
@@ -328,7 +351,7 @@ function LoginContent() {
                 </div>
               )}
 
-              {/* Tombol Login */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLocked || isPermanentlyBlocked || isSigningIn}
@@ -338,7 +361,7 @@ function LoginContent() {
                   ? 'ACCOUNT BLOCKED'
                   : isLocked
                   ? `Please wait ${countdown}s`
-                  : isSigningIn ? 'SIGNING IN…' : 'LOGIN'}
+                  : isSigningIn ? 'SIGNING IN...' : 'SIGN IN'}
               </button>
             </form>
 
@@ -347,13 +370,12 @@ function LoginContent() {
               <Link href="/register" className="font-bold text-[#3B6FF5] hover:underline">Register</Link>
             </p>
 
-            {/* Info Demo Credentials */}
+            {/* Demo Credentials Info */}
             <div className="mt-7 p-4 rounded-xl bg-white/60 backdrop-blur-md border border-white/80 text-xs text-[#334155] space-y-1 font-[family-name:var(--font-montserrat)] shadow-sm relative z-10">
               <p className="font-bold text-[#3B6FF5]">Demo Credentials:</p>
-              <p>• Management: <span className="text-[#0D1B2A] font-semibold">manajemen@andima.co.id</span> | Pass: <span className="text-[#0D1B2A] font-semibold">Manajemen123!@#</span></p>
+              <p>Management: <span className="text-[#0D1B2A] font-semibold">manajemen@andima.co.id</span> | Pass: <span className="text-[#0D1B2A] font-semibold">Manajemen123!@#</span></p>
             </div>
           </div>
-
         </div>
       </div>
     </main>
